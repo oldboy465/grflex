@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Extrator de GRS - UEMA</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Bibliotecas via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Extrator de GRS - UEMA</h1>
+        <input type="file" id="pdfInput" accept="application/pdf">
+        <button id="btnProcessar">Extrair Dados para Excel</button>
+        <button id="btnAjuda">Ajuda</button>
+        <div id="status"></div>
+    </div>
+
+    <!-- Modal de Ajuda -->
+    <div id="modalAjuda" class="modal">
+        <div class="modal-content">
+            <p>Autor: Philipe Sampaio | Git: oldboy465<br>Wpp: (98) 98250-6920</p>
+            <a href="https://oldboy465.github.io/pdf92/" target="_blank">Ferramenta de editar pdfs</a>
+            <button onclick="document.getElementById('modalAjuda').style.display='none'">Fechar</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
