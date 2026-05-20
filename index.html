@@ -52,10 +52,60 @@
   #btnProc:not(:disabled):hover{opacity:.85}
   #btnExp{background:#059669;color:#fff;display:none}
   #btnExp:hover{opacity:.85}
+  #btnExpFilt{background:#0891b2;color:#fff;display:none}
+  #btnExpFilt:hover{opacity:.85}
 
   /* summary */
   #summ{display:none;margin-top:16px;font-size:.82rem;color:#374151;
     background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px 14px}
+
+  /* ── CARDS DE QUANTITATIVOS ─────────────────────────── */
+  #cards-area{display:none;margin-bottom:20px}
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+  .kpi{
+    background:#fff;border:1px solid #dde1e7;border-radius:10px;
+    padding:18px 20px;position:relative;overflow:hidden
+  }
+  .kpi::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:3px
+  }
+  .kpi.blue::before{background:#2563eb}
+  .kpi.green::before{background:#059669}
+  .kpi.purple::before{background:#7c3aed}
+  .kpi.orange::before{background:#ea580c}
+  .kpi-label{font-size:.72rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px}
+  .kpi-val{font-size:1.7rem;font-weight:800;font-family:monospace;line-height:1}
+  .kpi.blue  .kpi-val{color:#2563eb}
+  .kpi.green .kpi-val{color:#059669}
+  .kpi.purple .kpi-val{color:#7c3aed}
+  .kpi.orange .kpi-val{color:#ea580c}
+  .kpi-sub{font-size:.72rem;color:#9ca3af;margin-top:4px}
+
+  /* ── ÁREA DE FILTROS ────────────────────────────────── */
+  #filter-card{display:none}
+  .filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px}
+  .filter-grid label{font-size:.75rem;font-weight:700;color:#475569;display:block;margin-bottom:4px}
+  .filter-grid input,
+  .filter-grid select{
+    width:100%;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;
+    font-size:.83rem;outline:none;background:#fff;color:#1f2937;transition:border-color .15s
+  }
+  .filter-grid input:focus,
+  .filter-grid select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+  .filter-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  #btnClearFilt{background:#6b7280;color:#fff;padding:8px 18px;font-size:.82rem}
+  #btnClearFilt:hover{opacity:.85}
+  #filt-count{font-size:.8rem;color:#6b7280;margin-left:4px}
+
+  /* rank badge */
+  .rank-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:20px;height:20px;border-radius:50%;
+    font-size:.68rem;font-weight:800;margin-right:4px
+  }
+  .rank-1{background:#fbbf24;color:#fff}
+  .rank-2{background:#94a3b8;color:#fff}
+  .rank-3{background:#b45309;color:#fff}
 
   /* table */
   #tbl-card{display:none}
@@ -67,6 +117,10 @@
     padding:10px 12px;text-align:left;white-space:nowrap;
     border-bottom:1px solid #e5e7eb;position:sticky;top:0
   }
+  thead th.sort-asc::after{content:' ▲';font-size:.65rem}
+  thead th.sort-desc::after{content:' ▼';font-size:.65rem}
+  thead th[data-sort]{cursor:pointer;user-select:none}
+  thead th[data-sort]:hover{background:#e2e8f0}
   tbody tr{border-bottom:1px solid #f1f5f9}
   tbody tr:hover{background:#f8fafc}
   td{padding:9px 12px;vertical-align:top}
@@ -74,12 +128,14 @@
   .c-val{font-family:monospace;color:#059669;text-align:right;white-space:nowrap}
   .c-obs{max-width:300px;color:#555;line-height:1.45}
   .c-usr{color:#555;white-space:nowrap}
+
+  #no-results{display:none;text-align:center;padding:28px;color:#9ca3af;font-size:.88rem}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <h1>📄 Extrator de GRS – UEMA</h1>
+  <h1>📄 Extrator de GRs  – UEMA</h1>
   <p class="sub">SIGEF/MA · Guia de Recebimento · Exportação para Excel</p>
 
   <div class="card">
@@ -103,6 +159,78 @@
     <div class="btns">
       <button id="btnProc" disabled>▶ Processar PDF</button>
       <button id="btnExp">⬇ Baixar Excel (.xlsx)</button>
+      <button id="btnExpFilt">⬇ Baixar Filtrados (.xlsx)</button>
+    </div>
+  </div>
+
+  <!-- ── CARDS ─────────────────────────────────────────── -->
+  <div id="cards-area">
+    <div class="cards-grid">
+      <div class="kpi blue">
+        <div class="kpi-label">Total de GRs</div>
+        <div class="kpi-val" id="kpi-total">0</div>
+        <div class="kpi-sub">guias extraídas</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-label">Soma dos Valores</div>
+        <div class="kpi-val" id="kpi-soma">R$ 0</div>
+        <div class="kpi-sub" id="kpi-soma-sub">valor total</div>
+      </div>
+      <div class="kpi purple">
+        <div class="kpi-label">Domicílios Únicos</div>
+        <div class="kpi-val" id="kpi-dom">0</div>
+        <div class="kpi-sub">origens distintas</div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-label">GRs Filtradas</div>
+        <div class="kpi-val" id="kpi-filt">0</div>
+        <div class="kpi-sub" id="kpi-filt-sub">exibindo na tabela</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FILTROS ───────────────────────────────────────── -->
+  <div class="card" id="filter-card">
+    <h2>🔍 Filtros e Busca</h2>
+    <div class="filter-grid">
+      <div>
+        <label>Domicílio Bancário</label>
+        <select id="filtDom">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div>
+        <label>Data Referência — De</label>
+        <input type="date" id="filtDateIni">
+      </div>
+      <div>
+        <label>Data Referência — Até</label>
+        <input type="date" id="filtDateFim">
+      </div>
+      <div>
+        <label>Busca na Observação</label>
+        <input type="text" id="filtObs" placeholder="Termo livre…">
+      </div>
+      <div>
+        <label>Valor Mínimo (R$)</label>
+        <input type="number" id="filtValMin" placeholder="0,00" min="0" step="0.01">
+      </div>
+      <div>
+        <label>Valor Máximo (R$)</label>
+        <input type="number" id="filtValMax" placeholder="sem limite" min="0" step="0.01">
+      </div>
+      <div>
+        <label>Ordenar por Valor</label>
+        <select id="filtRank">
+          <option value="">Padrão (inserção)</option>
+          <option value="desc">Maior valor primeiro ↓</option>
+          <option value="asc">Menor valor primeiro ↑</option>
+        </select>
+      </div>
+    </div>
+    <div class="filter-actions">
+      <button id="btnClearFilt">✕ Limpar filtros</button>
+      <span id="filt-count"></span>
     </div>
   </div>
 
@@ -113,16 +241,18 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Número</th>
-            <th>Data Referência</th>
-            <th>Valor (R$)</th>
-            <th>Domicílio Origem</th>
+            <th>Rank</th>
+            <th data-sort="numero">Número</th>
+            <th data-sort="data">Data Referência</th>
+            <th data-sort="valor" class="sort-desc">Valor (R$)</th>
+            <th data-sort="domicilio">Domicílio Origem</th>
             <th>Observação</th>
             <th>Usuário</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
+      <div id="no-results">Nenhum registro encontrado com os filtros aplicados.</div>
     </div>
   </div>
 
@@ -135,20 +265,45 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 // ─── state ────────────────────────────────────────────────
 var dados = [];
+var sortCol = 'valor';
+var sortDir = 'desc';
 
 // ─── elements ─────────────────────────────────────────────
-var inp    = document.getElementById('pdfInput');
-var dz     = document.getElementById('dropzone');
-var bProc  = document.getElementById('btnProc');
-var bExp   = document.getElementById('btnExp');
-var fname  = document.getElementById('fname');
-var progB  = document.getElementById('prog-box');
-var bfill  = document.getElementById('bfill');
-var progT  = document.getElementById('prog-txt');
-var msgEl  = document.getElementById('msg');
-var summEl = document.getElementById('summ');
-var tbody  = document.getElementById('tbody');
-var tCard  = document.getElementById('tbl-card');
+var inp        = document.getElementById('pdfInput');
+var dz         = document.getElementById('dropzone');
+var bProc      = document.getElementById('btnProc');
+var bExp       = document.getElementById('btnExp');
+var bExpFilt   = document.getElementById('btnExpFilt');
+var fname      = document.getElementById('fname');
+var progB      = document.getElementById('prog-box');
+var bfill      = document.getElementById('bfill');
+var progT      = document.getElementById('prog-txt');
+var msgEl      = document.getElementById('msg');
+var summEl     = document.getElementById('summ');
+var tbody      = document.getElementById('tbody');
+var tCard      = document.getElementById('tbl-card');
+var cardsArea  = document.getElementById('cards-area');
+var filterCard = document.getElementById('filter-card');
+var noRes      = document.getElementById('no-results');
+
+// cards
+var kpiTotal  = document.getElementById('kpi-total');
+var kpiSoma   = document.getElementById('kpi-soma');
+var kpiSomaSub= document.getElementById('kpi-soma-sub');
+var kpiDom    = document.getElementById('kpi-dom');
+var kpiFilt   = document.getElementById('kpi-filt');
+var kpiFiltSub= document.getElementById('kpi-filt-sub');
+
+// filters
+var filtDom    = document.getElementById('filtDom');
+var filtDateIni= document.getElementById('filtDateIni');
+var filtDateFim= document.getElementById('filtDateFim');
+var filtObs    = document.getElementById('filtObs');
+var filtValMin = document.getElementById('filtValMin');
+var filtValMax = document.getElementById('filtValMax');
+var filtRank   = document.getElementById('filtRank');
+var filtCount  = document.getElementById('filt-count');
+var btnClearFilt = document.getElementById('btnClearFilt');
 
 // ─── file input ───────────────────────────────────────────
 inp.addEventListener('change', function() {
@@ -186,6 +341,9 @@ async function doProcess(files) {
   tbody.innerHTML = '';
   tCard.style.display = 'none';
   bExp.style.display = 'none';
+  bExpFilt.style.display = 'none';
+  cardsArea.style.display = 'none';
+  filterCard.style.display = 'none';
   hideMsg();
   summEl.style.display = 'none';
   bProc.disabled = true;
@@ -217,8 +375,6 @@ async function doProcess(files) {
           var page    = await doc.getPage(pg);
           var content = await page.getTextContent();
 
-          // Build text: join items with space within same line,
-          // new-line when Y changes significantly
           var text = buildText(content.items);
 
           if (!text.includes('Guia Recebimento') && !/\d{4}GR\d+/.test(text)) {
@@ -229,7 +385,6 @@ async function doProcess(files) {
           var rec = extract(text);
           if (rec) {
             dados.push(rec);
-            appendRow(dados.length, rec);
             found++;
           } else {
             skipped++;
@@ -260,6 +415,13 @@ async function doProcess(files) {
     summEl.textContent = 'Total: ' + found + ' guias | ' + totalPages + ' páginas processadas' + (skipped ? ' | ' + skipped + ' páginas sem GR ignoradas' : '');
     tCard.style.display = 'block';
     bExp.style.display = 'inline-flex';
+    bExpFilt.style.display = 'inline-flex';
+    cardsArea.style.display = 'block';
+    filterCard.style.display = 'block';
+
+    populateDomFilter();
+    updateCards(dados);
+    renderTable();
   }
 }
 
@@ -267,11 +429,10 @@ async function doProcess(files) {
 function buildText(items) {
   if (!items || !items.length) return '';
 
-  // Sort top-to-bottom, left-to-right
   var sorted = items.slice().sort(function(a, b){
     var ay = a.transform[5], by = b.transform[5];
-    if (Math.abs(ay - by) > 3) return by - ay;   // different lines
-    return a.transform[4] - b.transform[4];       // same line: left to right
+    if (Math.abs(ay - by) > 3) return by - ay;
+    return a.transform[4] - b.transform[4];
   });
 
   var lines = [];
@@ -289,7 +450,6 @@ function buildText(items) {
       curLine = [s];
       curY = y;
     } else {
-      // same line — add space only if needed
       var last = curLine[curLine.length - 1];
       if (last && last[last.length-1] !== ' ' && s[0] !== ' ') {
         curLine.push(' ');
@@ -327,25 +487,225 @@ function extract(text) {
   };
 }
 
-// ─── append row ───────────────────────────────────────────
-function appendRow(idx, r) {
-  var tr = document.createElement('tr');
-  tr.innerHTML =
-    '<td style="color:#9ca3af;font-family:monospace;font-size:.75rem">' + idx + '</td>' +
-    '<td class="c-num">' + esc(r.numero)    + '</td>' +
-    '<td>'              + esc(r.data)       + '</td>' +
-    '<td class="c-val">'+ esc(r.valor)      + '</td>' +
-    '<td style="white-space:nowrap;font-size:.78rem">' + esc(r.domicilio) + '</td>' +
-    '<td class="c-obs">'+ esc(r.observacao) + '</td>' +
-    '<td class="c-usr">'+ esc(r.usuario)    + '</td>';
-  tbody.appendChild(tr);
+// ─── parse valor para número ──────────────────────────────
+function parseValor(s) {
+  if (!s) return 0;
+  // Remove pontos de milhar e troca vírgula por ponto
+  var clean = s.replace(/\./g,'').replace(',','.');
+  return parseFloat(clean) || 0;
 }
 
-// ─── export ───────────────────────────────────────────────
+// ─── parse data DD/MM/YYYY → Date ─────────────────────────
+function parseData(s) {
+  if (!s) return null;
+  var p = s.split('/');
+  if (p.length < 3) return null;
+  return new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0]));
+}
+
+// ─── formata número como moeda ────────────────────────────
+function fmtMoeda(n) {
+  return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ─── popula select de domicílios ──────────────────────────
+function populateDomFilter() {
+  var doms = [];
+  dados.forEach(function(r){ if(r.domicilio && doms.indexOf(r.domicilio) === -1) doms.push(r.domicilio); });
+  doms.sort();
+  filtDom.innerHTML = '<option value="">Todos</option>';
+  doms.forEach(function(d){
+    var opt = document.createElement('option');
+    opt.value = d; opt.textContent = d;
+    filtDom.appendChild(opt);
+  });
+}
+
+// ─── retorna dados filtrados/ordenados ────────────────────
+function getFiltered() {
+  var domVal  = filtDom.value;
+  var dateIni = filtDateIni.value ? new Date(filtDateIni.value) : null;
+  var dateFim = filtDateFim.value ? new Date(filtDateFim.value) : null;
+  if (dateFim) dateFim.setHours(23,59,59,999);
+  var obsVal  = filtObs.value.toLowerCase().trim();
+  var valMin  = filtValMin.value !== '' ? parseFloat(filtValMin.value) : null;
+  var valMax  = filtValMax.value !== '' ? parseFloat(filtValMax.value) : null;
+  var rank    = filtRank.value;
+
+  var result = dados.filter(function(r) {
+    if (domVal && r.domicilio !== domVal) return false;
+    if (dateIni || dateFim) {
+      var rd = parseData(r.data);
+      if (rd) {
+        if (dateIni && rd < dateIni) return false;
+        if (dateFim && rd > dateFim) return false;
+      }
+    }
+    if (obsVal && r.observacao.toLowerCase().indexOf(obsVal) === -1) return false;
+    var rv = parseValor(r.valor);
+    if (valMin !== null && rv < valMin) return false;
+    if (valMax !== null && rv > valMax) return false;
+    return true;
+  });
+
+  // ordenar por coluna clicável ou por filtro de rank
+  if (sortCol === 'valor') {
+    result.sort(function(a,b){
+      var av = parseValor(a.valor), bv = parseValor(b.valor);
+      return sortDir === 'asc' ? av - bv : bv - av;
+    });
+  } else if (sortCol === 'data') {
+    result.sort(function(a,b){
+      var ad = parseData(a.data) || 0, bd = parseData(b.data) || 0;
+      return sortDir === 'asc' ? ad - bd : bd - ad;
+    });
+  } else if (sortCol === 'numero') {
+    result.sort(function(a,b){
+      return sortDir === 'asc'
+        ? a.numero.localeCompare(b.numero)
+        : b.numero.localeCompare(a.numero);
+    });
+  } else if (sortCol === 'domicilio') {
+    result.sort(function(a,b){
+      return sortDir === 'asc'
+        ? a.domicilio.localeCompare(b.domicilio)
+        : b.domicilio.localeCompare(a.domicilio);
+    });
+  }
+
+  // filtRank sobrescreve só se nenhuma coluna foi clicada manualmente e filtRank foi alterado
+  if (filtRank.value && sortCol === 'valor') {
+    result.sort(function(a,b){
+      var av = parseValor(a.valor), bv = parseValor(b.valor);
+      return filtRank.value === 'asc' ? av - bv : bv - av;
+    });
+  }
+
+  return result;
+}
+
+// ─── renderiza tabela ─────────────────────────────────────
+function renderTable() {
+  var filtered = getFiltered();
+
+  tbody.innerHTML = '';
+
+  if (!filtered.length) {
+    noRes.style.display = 'block';
+    updateFilteredCards(filtered);
+    return;
+  }
+  noRes.style.display = 'none';
+
+  // ranking por valor dentro dos filtrados
+  var sorted_for_rank = filtered.slice().sort(function(a,b){
+    return parseValor(b.valor) - parseValor(a.valor);
+  });
+  var rankMap = {};
+  sorted_for_rank.forEach(function(r, i){ rankMap[r.numero] = i + 1; });
+
+  filtered.forEach(function(r, i) {
+    var rk = rankMap[r.numero];
+    var badge = '';
+    if (rk === 1) badge = '<span class="rank-badge rank-1">1°</span>';
+    else if (rk === 2) badge = '<span class="rank-badge rank-2">2°</span>';
+    else if (rk === 3) badge = '<span class="rank-badge rank-3">3°</span>';
+    else badge = '<span style="font-size:.75rem;color:#9ca3af;font-family:monospace">' + rk + 'º</span>';
+
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td style="color:#9ca3af;font-family:monospace;font-size:.75rem">' + (i+1) + '</td>' +
+      '<td style="white-space:nowrap">' + badge + '</td>' +
+      '<td class="c-num">' + esc(r.numero)    + '</td>' +
+      '<td>'              + esc(r.data)       + '</td>' +
+      '<td class="c-val">'+ esc(r.valor)      + '</td>' +
+      '<td style="white-space:nowrap;font-size:.78rem">' + esc(r.domicilio) + '</td>' +
+      '<td class="c-obs">'+ esc(r.observacao) + '</td>' +
+      '<td class="c-usr">'+ esc(r.usuario)    + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  updateFilteredCards(filtered);
+}
+
+// ─── atualiza cards globais (todos os dados) ──────────────
+function updateCards(all) {
+  kpiTotal.textContent = all.length;
+  var soma = all.reduce(function(s,r){ return s + parseValor(r.valor); }, 0);
+  kpiSoma.textContent = fmtMoeda(soma);
+  kpiSomaSub.textContent = 'valor total geral';
+  var doms = [];
+  all.forEach(function(r){ if(r.domicilio && doms.indexOf(r.domicilio) === -1) doms.push(r.domicilio); });
+  kpiDom.textContent = doms.length;
+}
+
+// ─── atualiza card de filtrados ───────────────────────────
+function updateFilteredCards(filtered) {
+  kpiFilt.textContent = filtered.length;
+  var soma = filtered.reduce(function(s,r){ return s + parseValor(r.valor); }, 0);
+  filtCount.textContent = filtered.length + ' de ' + dados.length + ' registros · Soma filtrada: ' + fmtMoeda(soma);
+  kpiFiltSub.textContent = 'soma: ' + fmtMoeda(soma);
+}
+
+// ─── eventos de filtro ────────────────────────────────────
+[filtDom, filtDateIni, filtDateFim, filtObs, filtValMin, filtValMax, filtRank].forEach(function(el){
+  el.addEventListener('input', renderTable);
+  el.addEventListener('change', renderTable);
+});
+
+btnClearFilt.addEventListener('click', function(){
+  filtDom.value = '';
+  filtDateIni.value = '';
+  filtDateFim.value = '';
+  filtObs.value = '';
+  filtValMin.value = '';
+  filtValMax.value = '';
+  filtRank.value = '';
+  sortCol = 'valor';
+  sortDir = 'desc';
+  updateSortHeaders();
+  renderTable();
+});
+
+// ─── ordenação por clique no header ──────────────────────
+document.querySelectorAll('thead th[data-sort]').forEach(function(th){
+  th.addEventListener('click', function(){
+    var col = th.getAttribute('data-sort');
+    if (sortCol === col) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortCol = col;
+      sortDir = col === 'valor' ? 'desc' : 'asc';
+    }
+    updateSortHeaders();
+    renderTable();
+  });
+});
+
+function updateSortHeaders() {
+  document.querySelectorAll('thead th[data-sort]').forEach(function(th){
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.getAttribute('data-sort') === sortCol) {
+      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
+}
+
+// ─── export todos ─────────────────────────────────────────
 bExp.addEventListener('click', function(){
   if (!dados.length) return;
+  exportRows(dados, 'GRS_UEMA_');
+});
 
-  var rows = dados.map(function(r){
+// ─── export filtrados ─────────────────────────────────────
+bExpFilt.addEventListener('click', function(){
+  var filtered = getFiltered();
+  if (!filtered.length) { showMsg('Nenhum dado filtrado para exportar.', 'err'); return; }
+  exportRows(filtered, 'GRS_UEMA_FILTRADO_');
+});
+
+function exportRows(rows, prefix) {
+  var data = rows.map(function(r){
     return {
       'Número':           r.numero,
       'Data Referência':  r.data,
@@ -355,18 +715,16 @@ bExp.addEventListener('click', function(){
       'Usuário':          r.usuario
     };
   });
-
-  var ws = XLSX.utils.json_to_sheet(rows);
+  var ws = XLSX.utils.json_to_sheet(data);
   ws['!cols'] = [{wch:16},{wch:16},{wch:14},{wch:28},{wch:70},{wch:36}];
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'GRS');
-
   var d = new Date();
   var ds = d.getFullYear() + '-' +
            String(d.getMonth()+1).padStart(2,'0') + '-' +
            String(d.getDate()).padStart(2,'0');
-  XLSX.writeFile(wb, 'GRS_UEMA_' + ds + '.xlsx');
-});
+  XLSX.writeFile(wb, prefix + ds + '.xlsx');
+}
 
 // ─── helpers ──────────────────────────────────────────────
 function readAsBuffer(file) {

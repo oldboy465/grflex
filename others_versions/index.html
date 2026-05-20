@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extrator GRS – UEMA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh;padding:24px 16px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:1.3rem;color:#1a1a2e;margin-bottom:4px}
+  .sub{font-size:.83rem;color:#666;margin-bottom:24px}
+  .card{background:#fff;border:1px solid #dde1e7;border-radius:10px;padding:24px;margin-bottom:20px}
+  .card h2{font-size:1rem;color:#333;margin-bottom:16px}
+
+  /* upload */
+  .upload-box{
+    border:2px dashed #b0b8c4;border-radius:8px;
+    padding:32px 20px;text-align:center;cursor:pointer;
+    transition:border-color .2s,background .2s;position:relative
+  }
+  .upload-box:hover,.upload-box.over{border-color:#2563eb;background:#eff6ff}
+  .upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .upload-box .ico{font-size:2.2rem;margin-bottom:8px}
+  .upload-box p{font-size:.88rem;color:#555}
+  .upload-box p b{color:#2563eb}
+  #fname{margin-top:10px;font-size:.8rem;color:#2563eb;font-family:monospace;min-height:16px}
+
+  /* progress */
+  #prog-box{display:none;margin-top:16px}
+  .bar-bg{background:#e5e7eb;border-radius:99px;height:8px;overflow:hidden}
+  .bar-fill{height:100%;background:#2563eb;border-radius:99px;width:0%;transition:width .15s}
+  #prog-txt{font-size:.78rem;color:#666;margin-top:6px;font-family:monospace}
+
+  /* messages */
+  #msg{display:none;margin-top:14px;padding:10px 14px;border-radius:6px;font-size:.85rem}
+  .ok {background:#d1fae5;border:1px solid #6ee7b7;color:#065f46}
+  .err{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d}
+
+  /* buttons */
+  .btns{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+  button{
+    padding:10px 22px;border:none;border-radius:6px;
+    font-size:.88rem;font-weight:700;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;
+    transition:opacity .15s
+  }
+  button:disabled{opacity:.4;cursor:not-allowed}
+  #btnProc{background:#2563eb;color:#fff}
+  #btnProc:not(:disabled):hover{opacity:.85}
+  #btnExp{background:#059669;color:#fff;display:none}
+  #btnExp:hover{opacity:.85}
+
+  /* summary */
+  #summ{display:none;margin-top:16px;font-size:.82rem;color:#374151;
+    background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px 14px}
+
+  /* table */
+  #tbl-card{display:none}
+  .tbl-wrap{overflow-x:auto;border:1px solid #e5e7eb;border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:.8rem}
+  thead th{
+    background:#f1f5f9;color:#475569;font-size:.72rem;
+    text-transform:uppercase;letter-spacing:.05em;font-weight:700;
+    padding:10px 12px;text-align:left;white-space:nowrap;
+    border-bottom:1px solid #e5e7eb;position:sticky;top:0
+  }
+  tbody tr{border-bottom:1px solid #f1f5f9}
+  tbody tr:hover{background:#f8fafc}
+  td{padding:9px 12px;vertical-align:top}
+  .c-num{font-family:monospace;color:#2563eb;white-space:nowrap}
+  .c-val{font-family:monospace;color:#059669;text-align:right;white-space:nowrap}
+  .c-obs{max-width:300px;color:#555;line-height:1.45}
+  .c-usr{color:#555;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>📄 Extrator de GRS – UEMA</h1>
+  <p class="sub">SIGEF/MA · Guia de Recebimento · Exportação para Excel</p>
+
+  <div class="card">
+    <h2>1. Selecione o PDF</h2>
+    <div class="upload-box" id="dropzone">
+      <input type="file" id="pdfInput" accept="application/pdf" multiple>
+      <div class="ico">📂</div>
+      <p><b>Clique aqui</b> ou arraste o PDF</p>
+      <p style="margin-top:4px">Suporta um ou vários arquivos</p>
+      <div id="fname"></div>
+    </div>
+
+    <div id="prog-box">
+      <div class="bar-bg"><div class="bar-fill" id="bfill"></div></div>
+      <div id="prog-txt">Aguardando…</div>
+    </div>
+
+    <div id="msg"></div>
+    <div id="summ"></div>
+
+    <div class="btns">
+      <button id="btnProc" disabled>▶ Processar PDF</button>
+      <button id="btnExp">⬇ Baixar Excel (.xlsx)</button>
+    </div>
+  </div>
+
+  <div class="card" id="tbl-card">
+    <h2>2. Dados extraídos</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Número</th>
+            <th>Data Referência</th>
+            <th>Valor (R$)</th>
+            <th>Domicílio Origem</th>
+            <th>Observação</th>
+            <th>Usuário</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+// ─── worker ───────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+// ─── state ────────────────────────────────────────────────
+var dados = [];
+
+// ─── elements ─────────────────────────────────────────────
+var inp    = document.getElementById('pdfInput');
+var dz     = document.getElementById('dropzone');
+var bProc  = document.getElementById('btnProc');
+var bExp   = document.getElementById('btnExp');
+var fname  = document.getElementById('fname');
+var progB  = document.getElementById('prog-box');
+var bfill  = document.getElementById('bfill');
+var progT  = document.getElementById('prog-txt');
+var msgEl  = document.getElementById('msg');
+var summEl = document.getElementById('summ');
+var tbody  = document.getElementById('tbody');
+var tCard  = document.getElementById('tbl-card');
+
+// ─── file input ───────────────────────────────────────────
+inp.addEventListener('change', function() {
+  var files = Array.from(inp.files);
+  if (!files.length) return;
+  fname.textContent = files.map(function(f){ return f.name; }).join(', ');
+  bProc.disabled = false;
+  hideMsg();
+});
+
+dz.addEventListener('dragover', function(e){ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', function(){ dz.classList.remove('over'); });
+dz.addEventListener('drop', function(e){
+  e.preventDefault(); dz.classList.remove('over');
+  var dt = new DataTransfer();
+  Array.from(e.dataTransfer.files)
+    .filter(function(f){ return f.type === 'application/pdf'; })
+    .forEach(function(f){ dt.items.add(f); });
+  if (dt.files.length) {
+    inp.files = dt.files;
+    inp.dispatchEvent(new Event('change'));
+  }
+});
+
+// ─── process ──────────────────────────────────────────────
+bProc.addEventListener('click', function(){
+  var files = Array.from(inp.files);
+  if (!files.length) { showMsg('Selecione um arquivo PDF.', 'err'); return; }
+  doProcess(files);
+});
+
+async function doProcess(files) {
+  // reset
+  dados = [];
+  tbody.innerHTML = '';
+  tCard.style.display = 'none';
+  bExp.style.display = 'none';
+  hideMsg();
+  summEl.style.display = 'none';
+  bProc.disabled = true;
+  progB.style.display = 'block';
+
+  var found = 0, skipped = 0, totalPages = 0, done = 0;
+
+  try {
+    // pre-load all PDFs to get total page count
+    var pdfDocs = [];
+    for (var fi = 0; fi < files.length; fi++) {
+      var buf = await readAsBuffer(files[fi]);
+      var doc = await pdfjsLib.getDocument({data: buf}).promise;
+      pdfDocs.push({doc: doc, name: files[fi].name});
+      totalPages += doc.numPages;
+    }
+
+    for (var pi = 0; pi < pdfDocs.length; pi++) {
+      var doc  = pdfDocs[pi].doc;
+      var name = pdfDocs[pi].name;
+
+      for (var pg = 1; pg <= doc.numPages; pg++) {
+        done++;
+        var pct = Math.round(done / totalPages * 100);
+        bfill.style.width = pct + '%';
+        progT.textContent = 'Processando ' + name + ' — pág ' + pg + '/' + doc.numPages + ' (' + pct + '%)';
+
+        try {
+          var page    = await doc.getPage(pg);
+          var content = await page.getTextContent();
+
+          // Build text: join items with space within same line,
+          // new-line when Y changes significantly
+          var text = buildText(content.items);
+
+          if (!text.includes('Guia Recebimento') && !/\d{4}GR\d+/.test(text)) {
+            skipped++;
+            continue;
+          }
+
+          var rec = extract(text);
+          if (rec) {
+            dados.push(rec);
+            appendRow(dados.length, rec);
+            found++;
+          } else {
+            skipped++;
+          }
+        } catch(pageErr) {
+          console.warn('Erro pág ' + pg, pageErr);
+          skipped++;
+        }
+      }
+    }
+
+  } catch(e) {
+    console.error(e);
+    showMsg('Erro ao ler o PDF: ' + e.message, 'err');
+    bProc.disabled = false;
+    progB.style.display = 'none';
+    return;
+  }
+
+  progB.style.display = 'none';
+  bProc.disabled = false;
+
+  if (found === 0) {
+    showMsg('Nenhuma GR encontrada. Verifique se o PDF é do tipo "Listar Guia Recebimento – Detalhe".', 'err');
+  } else {
+    showMsg('✓ ' + found + ' GR(s) extraída(s) com sucesso!', 'ok');
+    summEl.style.display = 'block';
+    summEl.textContent = 'Total: ' + found + ' guias | ' + totalPages + ' páginas processadas' + (skipped ? ' | ' + skipped + ' páginas sem GR ignoradas' : '');
+    tCard.style.display = 'block';
+    bExp.style.display = 'inline-flex';
+  }
+}
+
+// ─── build text from pdf.js items ─────────────────────────
+function buildText(items) {
+  if (!items || !items.length) return '';
+
+  // Sort top-to-bottom, left-to-right
+  var sorted = items.slice().sort(function(a, b){
+    var ay = a.transform[5], by = b.transform[5];
+    if (Math.abs(ay - by) > 3) return by - ay;   // different lines
+    return a.transform[4] - b.transform[4];       // same line: left to right
+  });
+
+  var lines = [];
+  var curY  = null;
+  var curLine = [];
+
+  for (var i = 0; i < sorted.length; i++) {
+    var it = sorted[i];
+    var y  = it.transform[5];
+    var s  = it.str;
+    if (s === '') continue;
+
+    if (curY === null || Math.abs(y - curY) > 3) {
+      if (curLine.length) lines.push(curLine.join(' '));
+      curLine = [s];
+      curY = y;
+    } else {
+      // same line — add space only if needed
+      var last = curLine[curLine.length - 1];
+      if (last && last[last.length-1] !== ' ' && s[0] !== ' ') {
+        curLine.push(' ');
+      }
+      curLine.push(s);
+    }
+  }
+  if (curLine.length) lines.push(curLine.join(''));
+
+  return lines.join('\n');
+}
+
+// ─── extract fields from page text ────────────────────────
+function extract(text) {
+  var mNum  = text.match(/N[uú]mero\s+(\d{4}GR\d+)/i);
+  if (!mNum) return null;
+
+  var mData = text.match(/Data Refer[eê]ncia\s+(\d{2}\/\d{2}\/\d{4})/i);
+  var mDom  = text.match(/Domic[íi]lio Origem\s+(.+?)\s+Valor\s+([\d.,]+)/i);
+  var mObs  = text.match(/Observa[çc][aã]o\s+([\s\S]+?)(?=\nLan[çc]amentos|\nN[oº°]\s+Evento)/i);
+  var mUser = text.match(/Lan[çc]ado em .+? por (.+)/i);
+
+  var obs = '';
+  if (mObs) {
+    obs = mObs[1].replace(/\s+/g, ' ').trim();
+  }
+
+  return {
+    numero:    mNum[1].trim(),
+    data:      mData  ? mData[1].trim()  : '',
+    valor:     mDom   ? mDom[2].trim()   : '',
+    domicilio: mDom   ? mDom[1].trim()   : '',
+    observacao: obs,
+    usuario:   mUser  ? mUser[1].trim()  : ''
+  };
+}
+
+// ─── append row ───────────────────────────────────────────
+function appendRow(idx, r) {
+  var tr = document.createElement('tr');
+  tr.innerHTML =
+    '<td style="color:#9ca3af;font-family:monospace;font-size:.75rem">' + idx + '</td>' +
+    '<td class="c-num">' + esc(r.numero)    + '</td>' +
+    '<td>'              + esc(r.data)       + '</td>' +
+    '<td class="c-val">'+ esc(r.valor)      + '</td>' +
+    '<td style="white-space:nowrap;font-size:.78rem">' + esc(r.domicilio) + '</td>' +
+    '<td class="c-obs">'+ esc(r.observacao) + '</td>' +
+    '<td class="c-usr">'+ esc(r.usuario)    + '</td>';
+  tbody.appendChild(tr);
+}
+
+// ─── export ───────────────────────────────────────────────
+bExp.addEventListener('click', function(){
+  if (!dados.length) return;
+
+  var rows = dados.map(function(r){
+    return {
+      'Número':           r.numero,
+      'Data Referência':  r.data,
+      'Valor':            r.valor,
+      'Domicílio Origem': r.domicilio,
+      'Observação':       r.observacao,
+      'Usuário':          r.usuario
+    };
+  });
+
+  var ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:16},{wch:16},{wch:14},{wch:28},{wch:70},{wch:36}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'GRS');
+
+  var d = new Date();
+  var ds = d.getFullYear() + '-' +
+           String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0');
+  XLSX.writeFile(wb, 'GRS_UEMA_' + ds + '.xlsx');
+});
+
+// ─── helpers ──────────────────────────────────────────────
+function readAsBuffer(file) {
+  return new Promise(function(resolve, reject){
+    var r = new FileReader();
+    r.onload  = function(e){ resolve(e.target.result); };
+    r.onerror = function(e){ reject(e); };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+function showMsg(txt, type) {
+  msgEl.textContent = txt;
+  msgEl.className   = type;
+  msgEl.style.display = 'block';
+}
+function hideMsg() {
+  msgEl.style.display = 'none';
+  msgEl.className = '';
+}
+</script>
+</body>
+</html>
